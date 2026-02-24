@@ -3,6 +3,18 @@ import '../models/medication.dart';
 import '../services/firebase_service.dart';
 import '../constants/app_theme.dart';
 
+class _MedicationDisplayItem {
+  final Medication medication;
+  final DateTime scheduledDate;
+  final bool isMissed;
+
+  const _MedicationDisplayItem({
+    required this.medication,
+    required this.scheduledDate,
+    required this.isMissed,
+  });
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -14,7 +26,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   List<Medication> medications = [];
   bool isLoading = true;
-  // persisted lastTaken on medication will determine taken state
 
   @override
   void initState() {
@@ -41,7 +52,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _markMedicationAsTaken(Medication med) async {
+  Future<void> _markMedicationAsTaken(
+    Medication med, {
+    required DateTime scheduledDate,
+    required bool wasMissed,
+  }) async {
     final TextEditingController notesController = TextEditingController();
     final result = await showDialog<String?>(
       context: context,
@@ -76,6 +91,8 @@ class _HomeScreenState extends State<HomeScreen> {
         'medicationName': med.name,
         'takenAt': now.toIso8601String(),
         'notes': result,
+        'scheduledFor': scheduledDate.toIso8601String(),
+        'wasMissed': wasMissed,
       };
       await _firebaseService.addDocument('takenLogs', logData);
       // persist lastTaken on medication document
@@ -103,10 +120,69 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _isTakenToday(DateTime? lastTaken) {
     if (lastTaken == null) return false;
-    final now = DateTime.now();
-    return lastTaken.year == now.year &&
-        lastTaken.month == now.month &&
-        lastTaken.day == now.day;
+    return _isSameDay(lastTaken, DateTime.now());
+  }
+
+  DateTime _startOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  List<_MedicationDisplayItem> _getTodayMedicationItems() {
+    final today = _startOfDay(DateTime.now());
+    final items = <_MedicationDisplayItem>[];
+
+    for (final med in medications) {
+      if (!med.isActive) {
+        continue;
+      }
+
+      final createdDay = _startOfDay(med.createdAt);
+      if (createdDay.isAfter(today)) {
+        continue;
+      }
+
+      final lastTakenDay = med.lastTaken != null
+          ? _startOfDay(med.lastTaken!)
+          : null;
+
+      // Already taken today -> should be in History, not in Today's Medication.
+      if (lastTakenDay != null && _isSameDay(lastTakenDay, today)) {
+        continue;
+      }
+
+      final pendingDate = lastTakenDay == null
+          ? createdDay
+          : lastTakenDay.add(const Duration(days: 1));
+
+      if (pendingDate.isAfter(today)) {
+        continue;
+      }
+
+      items.add(
+        _MedicationDisplayItem(
+          medication: med,
+          scheduledDate: pendingDate,
+          isMissed: pendingDate.isBefore(today),
+        ),
+      );
+    }
+
+    items.sort((a, b) {
+      if (a.isMissed != b.isMissed) {
+        return a.isMissed ? -1 : 1;
+      }
+      return a.scheduledDate.compareTo(b.scheduledDate);
+    });
+
+    return items;
   }
 
   String _getGreeting() {
@@ -118,6 +194,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final todayItems = _getTodayMedicationItems();
+
     return Scaffold(
       backgroundColor: AppColors.veryLightGreen,
       appBar: AppBar(
@@ -159,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   // Medications List or Empty State
-                  if (medications.isEmpty)
+                  if (todayItems.isEmpty)
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -174,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: AppSpacing.md),
                             const Text(
-                              'No medications yet',
+                              'No medications for today',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: AppColors.lightText,
@@ -201,10 +279,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: medications.length,
+                        itemCount: todayItems.length,
                         itemBuilder: (context, index) {
-                          final med = medications[index];
-                          return _medicationCard(med);
+                          final item = todayItems[index];
+                          return _medicationCard(item);
                         },
                       ),
                     ),
@@ -245,7 +323,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _medicationCard(Medication med) {
+  Widget _medicationCard(_MedicationDisplayItem item) {
+    final med = item.medication;
+
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       decoration: BoxDecoration(
@@ -353,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      med.frequency,
+                      med.medicationType,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -364,52 +444,54 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            if (_isTakenToday(med.lastTaken))
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.lightGreen,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(
-                        Icons.check,
-                        size: 16,
-                        color: AppColors.primaryGreen,
-                      ),
-                      SizedBox(width: AppSpacing.xs),
-                      Text(
-                        'Taken',
-                        style: TextStyle(
-                          color: AppColors.darkText,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              SizedBox(
+            if (item.isMissed) ...[
+              const SizedBox(height: AppSpacing.md),
+              Container(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _markMedicationAsTaken(med),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    foregroundColor: Colors.white,
-                  ),
-                  icon: const Icon(Icons.check_circle_rounded),
-                  label: const Text('Mark as Taken'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.errorRed.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      size: 16,
+                      color: AppColors.errorRed,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      'Missed • Scheduled on ${_formatDate(item.scheduledDate)}',
+                      style: const TextStyle(
+                        color: AppColors.errorRed,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _markMedicationAsTaken(
+                  med,
+                  scheduledDate: item.scheduledDate,
+                  wasMissed: item.isMissed,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.check_circle_rounded),
+                label: const Text('Mark as Taken'),
+              ),
+            ),
           ],
         ),
       ),

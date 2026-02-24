@@ -17,7 +17,6 @@ class _EditScreenState extends State<EditScreen> {
   late TextEditingController dosageController;
   late TextEditingController descriptionController;
   late String selectedType;
-  late String selectedFrequency;
   late String selectedTime;
   late bool notificationsEnabled;
 
@@ -29,13 +28,6 @@ class _EditScreenState extends State<EditScreen> {
     'Capsule',
     'Syrup',
     'Injection',
-  ];
-  final List<String> frequencies = [
-    'Daily',
-    'Weekly',
-    'Bi-weekly',
-    'Monthly',
-    'As needed',
   ];
 
   @override
@@ -49,7 +41,6 @@ class _EditScreenState extends State<EditScreen> {
       text: widget.medication?.description ?? '',
     );
     selectedType = widget.medication?.medicationType ?? 'Tablet';
-    selectedFrequency = widget.medication?.frequency ?? 'Daily';
     selectedTime = widget.medication?.time ?? '09:00 AM';
     notificationsEnabled = widget.medication?.notificationsEnabled ?? true;
   }
@@ -100,7 +91,7 @@ class _EditScreenState extends State<EditScreen> {
         'name': nameController.text,
         'dosage': dosageController.text,
         'medicationType': selectedType,
-        'frequency': selectedFrequency,
+        'frequency': widget.medication?.frequency ?? 'Daily',
         'time': selectedTime,
         'description': descriptionController.text,
         'notificationsEnabled': notificationsEnabled,
@@ -178,6 +169,8 @@ class _EditScreenState extends State<EditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
       backgroundColor: AppColors.veryLightGreen,
       appBar: AppBar(
@@ -192,7 +185,13 @@ class _EditScreenState extends State<EditScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg + bottomInset,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -214,14 +213,6 @@ class _EditScreenState extends State<EditScreen> {
 
             // Time Picker
             _buildTimeField(),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Frequency Dropdown
-            _buildDropdown('Frequency', selectedFrequency, frequencies, (
-              value,
-            ) {
-              setState(() => selectedFrequency = value);
-            }),
             const SizedBox(height: AppSpacing.lg),
 
             // Notes

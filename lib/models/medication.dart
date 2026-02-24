@@ -96,6 +96,8 @@ class TakenLog {
   final String medicationName;
   final DateTime takenAt;
   final String notes;
+  final DateTime? scheduledFor;
+  final bool wasMissed;
 
   TakenLog({
     required this.id,
@@ -103,17 +105,23 @@ class TakenLog {
     required this.medicationName,
     required this.takenAt,
     this.notes = '',
+    this.scheduledFor,
+    this.wasMissed = false,
   });
 
-  factory TakenLog.fromJson(Map<String, dynamic> json) {
+  factory TakenLog.fromJson(Map<String, dynamic> json, {String? docId}) {
     return TakenLog(
-      id: json['id'] ?? '',
+      id: docId ?? json['id'] ?? '',
       medicationId: json['medicationId'] ?? '',
       medicationName: json['medicationName'] ?? '',
       takenAt: json['takenAt'] != null
           ? DateTime.parse(json['takenAt'])
           : DateTime.now(),
       notes: json['notes'] ?? '',
+      scheduledFor: json['scheduledFor'] != null
+          ? DateTime.parse(json['scheduledFor'])
+          : null,
+      wasMissed: json['wasMissed'] ?? false,
     );
   }
 
@@ -124,6 +132,8 @@ class TakenLog {
       'medicationName': medicationName,
       'takenAt': takenAt.toIso8601String(),
       'notes': notes,
+      'scheduledFor': scheduledFor?.toIso8601String(),
+      'wasMissed': wasMissed,
     };
   }
 }
