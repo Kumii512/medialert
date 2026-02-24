@@ -15,10 +15,17 @@ class EditScreen extends StatefulWidget {
 class _EditScreenState extends State<EditScreen> {
   late TextEditingController nameController;
   late TextEditingController dosageController;
-  late TextEditingController frequencyController;
   late TextEditingController descriptionController;
+  late String selectedType;
+  late TimeOfDay selectedTime;
   final FirebaseService _firebaseService = FirebaseService();
   bool isSaving = false;
+  final List<String> medicationTypes = [
+    'Tablet',
+    'Capsule',
+    'Syrup',
+    'Injection',
+  ];
 
   @override
   void initState() {
@@ -27,27 +34,36 @@ class _EditScreenState extends State<EditScreen> {
     dosageController = TextEditingController(
       text: widget.medication?.dosage ?? '',
     );
-    frequencyController = TextEditingController(
-      text: widget.medication?.frequency ?? '',
-    );
     descriptionController = TextEditingController(
       text: widget.medication?.description ?? '',
     );
+    selectedType = widget.medication?.medicationType ?? 'Tablet';
+
+    // Parse the time from medication or use default 09:00
+    if (widget.medication != null && widget.medication!.time.isNotEmpty) {
+      final timeParts = widget.medication!.time.split(':');
+      if (timeParts.length >= 2) {
+        int hour = int.tryParse(timeParts[0]) ?? 9;
+        int minute = int.tryParse(timeParts[1]) ?? 0;
+        selectedTime = TimeOfDay(hour: hour, minute: minute);
+      } else {
+        selectedTime = const TimeOfDay(hour: 9, minute: 0);
+      }
+    } else {
+      selectedTime = const TimeOfDay(hour: 9, minute: 0);
+    }
   }
 
   @override
   void dispose() {
     nameController.dispose();
     dosageController.dispose();
-    frequencyController.dispose();
     descriptionController.dispose();
     super.dispose();
   }
 
   void _saveMedication() async {
-    if (nameController.text.isEmpty ||
-        dosageController.text.isEmpty ||
-        frequencyController.text.isEmpty) {
+    if (nameController.text.isEmpty || dosageController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all required fields')),
       );
@@ -57,11 +73,16 @@ class _EditScreenState extends State<EditScreen> {
     setState(() => isSaving = true);
 
     try {
+      final timeString =
+          '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+
       final medicationData = {
         'name': nameController.text,
         'dosage': dosageController.text,
-        'frequency': frequencyController.text,
+        'medicationType': selectedType,
+        'frequency': widget.medication?.frequency ?? 'Daily',
         'description': descriptionController.text,
+        'time': timeString,
         'createdAt':
             widget.medication?.createdAt.toIso8601String() ??
             DateTime.now().toIso8601String(),
@@ -144,8 +165,22 @@ class _EditScreenState extends State<EditScreen> {
     );
   }
 
+  Future<void> _selectTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: selectedTime,
+    );
+    if (picked != null && picked != selectedTime) {
+      setState(() {
+        selectedTime = picked;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -154,7 +189,8 @@ class _EditScreenState extends State<EditScreen> {
         backgroundColor: AppColors.primaryGreen,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -182,15 +218,61 @@ class _EditScreenState extends State<EditScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: frequencyController,
+            DropdownButtonFormField<String>(
+              initialValue: selectedType,
               decoration: InputDecoration(
-                labelText: 'Frequency *',
-                hintText: 'e.g., Twice daily',
+                labelText: 'Medication Type *',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                prefixIcon: const Icon(Icons.schedule),
+                prefixIcon: const Icon(Icons.category),
+              ),
+              items: medicationTypes
+                  .map(
+                    (type) => DropdownMenuItem(value: type, child: Text(type)),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => selectedType = value);
+                }
+              },
+            ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: _selectTime,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.access_time),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Time to take *',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          selectedTime.format(context),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),

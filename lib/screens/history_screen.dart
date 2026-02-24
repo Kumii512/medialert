@@ -26,7 +26,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final docs = await _firebaseService.getDocuments('takenLogs');
       setState(() {
         logs = docs.docs
-            .map((doc) => TakenLog.fromJson(doc.data() as Map<String, dynamic>))
+            .map(
+              (doc) => TakenLog.fromJson(
+                doc.data() as Map<String, dynamic>,
+                docId: doc.id,
+              ),
+            )
             .toList();
         // Sort by date descending
         logs.sort((a, b) => b.takenAt.compareTo(a.takenAt));
@@ -76,12 +81,137 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  String _dayKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String _formatSectionDate(String key) {
+    final parts = key.split('-');
+    if (parts.length != 3) return key;
+
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final day = int.tryParse(parts[2]);
+
+    if (year == null || month == null || day == null) return key;
+
+    return '${day.toString().padLeft(2, '0')}/${month.toString().padLeft(2, '0')}/$year';
+  }
+
+  String _formatTime(DateTime date) {
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Map<String, List<TakenLog>> _groupLogsByDate() {
+    final grouped = <String, List<TakenLog>>{};
+    for (final log in logs) {
+      final key = _dayKey(log.takenAt);
+      grouped.putIfAbsent(key, () => <TakenLog>[]).add(log);
+    }
+    return grouped;
+  }
+
+  Widget _buildLogCard(TakenLog log) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.lightGreen,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: AppColors.primaryGreen,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        log.medicationName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkText,
+                        ),
+                      ),
+                      Text(
+                        'Taken at ${_formatTime(log.takenAt)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.lightText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.errorRed,
+                  ),
+                  onPressed: () async {
+                    await _firebaseService.deleteDocument('takenLogs', log.id);
+                    _loadLogs();
+                  },
+                ),
+              ],
+            ),
+            if (log.wasMissed && log.scheduledFor != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Missed from ${_formatSectionDate(_dayKey(log.scheduledFor!))}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.errorRed,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            if (log.notes.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Notes: ${log.notes}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.lightText,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final groupedLogs = _groupLogsByDate().entries.toList()
+      ..sort((a, b) => b.key.compareTo(a.key));
+
     return Scaffold(
       backgroundColor: AppColors.veryLightGreen,
       appBar: AppBar(
@@ -111,102 +241,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ],
               ),
             )
-          : ListView.builder(
+          : ListView(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
                 vertical: AppSpacing.md,
               ),
-              itemCount: logs.length,
-              itemBuilder: (context, index) {
-                final log = logs[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+              children: [
+                for (final section in groupedLogs) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                    ),
+                    child: Text(
+                      _formatSectionDate(section.key),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.darkText,
                       ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(AppSpacing.md),
-                              decoration: BoxDecoration(
-                                color: AppColors.lightGreen,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.md,
-                                ),
-                              ),
-                              child: const Icon(
-                                Icons.check_circle_rounded,
-                                color: AppColors.primaryGreen,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    log.medicationName,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.darkText,
-                                    ),
-                                  ),
-                                  Text(
-                                    _formatDate(log.takenAt),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.lightText,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: AppColors.errorRed,
-                              ),
-                              onPressed: () async {
-                                await _firebaseService.deleteDocument(
-                                  'takenLogs',
-                                  log.id,
-                                );
-                                _loadLogs();
-                              },
-                            ),
-                          ],
-                        ),
-                        if (log.notes.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.md),
-                          Text(
-                            'Notes: ${log.notes}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.lightText,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ],
                     ),
                   ),
-                );
-              },
+                  ...section.value.map(_buildLogCard),
+                ],
+              ],
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: _markMedicationAsTaken,
