@@ -8,7 +8,6 @@ import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
 import 'models/medication.dart';
 import 'constants/app_theme.dart';
-import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +19,6 @@ void main() async {
     print('Firebase initialization error: $e');
   }
 
-  NotificationService().initialize();
   runApp(const MyApp());
 }
 
