@@ -1,1 +1,30 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"medialert-16f7d","appId":"1:280439406383:android:8aec3c071e5c8a6d822bda","fileOutput":"android/app/google-services.json"}}}}}
+{
+	"flutter": {
+		"platforms": {
+			"android": {
+				"default": {
+					"projectId": "medialert-16f7d",
+					"appId": "1:280439406383:android:8aec3c071e5c8a6d822bda",
+					"fileOutput": "android/app/google-services.json"
+				}
+			}
+		}
+	},
+	"hosting": {
+		"public": "build/web",
+		"ignore": [
+			"firebase.json",
+			"**/.*",
+			"**/node_modules/**"
+		],
+		"rewrites": [
+			{
+				"source": "**",
+				"destination": "/index.html"
+			}
+		]
+	},
+	"firestore": {
+		"rules": "firestore.rules"
+	}
+}

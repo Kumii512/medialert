@@ -23,7 +23,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _loadLogs() async {
     try {
-      final docs = await _firebaseService.getDocuments('takenLogs');
+      final docs = await _firebaseService.getUserDocuments('takenLogs');
       setState(() {
         logs = docs.docs
             .map(
@@ -71,7 +71,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 'takenAt': DateTime.now().toIso8601String(),
                 'notes': '',
               };
-              await _firebaseService.addDocument('takenLogs', logsData);
+              await _firebaseService.addUserDocument('takenLogs', logsData);
               _loadLogs();
             },
             child: const Text('Save'),
@@ -173,7 +173,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     color: AppColors.errorRed,
                   ),
                   onPressed: () async {
-                    await _firebaseService.deleteDocument('takenLogs', log.id);
+                    await _firebaseService.deleteUserDocument(
+                      'takenLogs',
+                      log.id,
+                    );
                     _loadLogs();
                   },
                 ),

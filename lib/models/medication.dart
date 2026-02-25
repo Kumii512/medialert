@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Medication {
   final String id;
   final String name;
@@ -26,6 +28,29 @@ class Medication {
   });
 
   factory Medication.fromJson(Map<String, dynamic> json, {String? docId}) {
+    DateTime? parseDateNullable(Object? value) {
+      if (value == null) {
+        return null;
+      }
+      if (value is Timestamp) {
+        return value.toDate();
+      }
+      if (value is DateTime) {
+        return value;
+      }
+      if (value is String) {
+        return DateTime.tryParse(value);
+      }
+      if (value is int) {
+        return DateTime.fromMillisecondsSinceEpoch(value);
+      }
+      return null;
+    }
+
+    DateTime parseDateOrNow(Object? value) {
+      return parseDateNullable(value) ?? DateTime.now();
+    }
+
     return Medication(
       id: docId ?? json['id'] ?? '',
       name: json['name'] ?? '',
@@ -35,12 +60,8 @@ class Medication {
       time: json['time'] ?? '09:00 AM',
       description: json['description'],
       notificationsEnabled: json['notificationsEnabled'] ?? true,
-      lastTaken: json['lastTaken'] != null
-          ? DateTime.parse(json['lastTaken'])
-          : null,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
+      lastTaken: parseDateNullable(json['lastTaken']),
+      createdAt: parseDateOrNow(json['createdAt']),
       isActive: json['isActive'] ?? true,
     );
   }
