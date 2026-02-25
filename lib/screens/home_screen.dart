@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/medication.dart';
 import '../services/firebase_service.dart';
 import '../constants/app_theme.dart';
@@ -26,31 +27,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   List<Medication> medications = [];
   bool isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMedications();
-  }
-
-  void _loadMedications() async {
-    try {
-      final docs = await _firebaseService.getDocuments('medications');
-      setState(() {
-        medications = docs.docs
-            .map(
-              (doc) => Medication.fromJson(
-                doc.data() as Map<String, dynamic>,
-                docId: doc.id,
-              ),
-            )
-            .toList();
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() => isLoading = false);
-    }
-  }
 
   Future<void> _markMedicationAsTaken(
     Medication med, {
@@ -94,10 +70,10 @@ class _HomeScreenState extends State<HomeScreen> {
         'scheduledFor': scheduledDate.toIso8601String(),
         'wasMissed': wasMissed,
       };
-      await _firebaseService.addDocument('takenLogs', logData);
+      await _firebaseService.addUserDocument('takenLogs', logData);
       // persist lastTaken on medication document
       if (med.id.isNotEmpty) {
-        await _firebaseService.updateDocument('medications', med.id, {
+        await _firebaseService.updateUserDocument('medications', med.id, {
           'lastTaken': now.toIso8601String(),
         });
       }
@@ -197,8 +173,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final todayItems = _getTodayMedicationItems();
-
     return Scaffold(
       backgroundColor: AppColors.veryLightGreen,
       appBar: AppBar(
@@ -206,94 +180,126 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: AppColors.primaryGreen,
         elevation: 0,
       ),
-      body: isLoading
-          ? const Center(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firebaseService.streamUserDocuments('medications'),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(
               child: CircularProgressIndicator(color: AppColors.primaryGreen),
-            )
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Greeting Section
+            );
+          }
+
+          try {
+            final items = <Medication>[];
+            for (final doc in snapshot.data!.docs) {
+              try {
+                items.add(
+                  Medication.fromJson(
+                    doc.data() as Map<String, dynamic>,
+                    docId: doc.id,
+                  ),
+                );
+              } catch (e) {
+                debugPrint('Skipping invalid medication ${doc.id}: $e');
+              }
+            }
+            medications = items;
+          } catch (e) {
+            debugPrint('Error loading medications: $e');
+          }
+
+          final todayItems = _getTodayMedicationItems();
+
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Greeting Section
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getGreeting(),
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkText,
+                        ),
+                      ),
+                      Text(
+                        'Today - ${DateTime.now().day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][DateTime.now().month - 1]}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.lightText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Medications List or Empty State
+                if (todayItems.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.xl,
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.favorite_border_rounded,
+                            size: 64,
+                            color: AppColors.primaryGreen.withOpacity(0.5),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          const Text(
+                            'No medications for today',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: AppColors.lightText,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          ElevatedButton.icon(
+                            onPressed: () => Navigator.of(
+                              context,
+                            ).pushNamed('/edit', arguments: null),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Your First Medication'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
                   Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _getGreeting(),
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.darkText,
-                          ),
-                        ),
-                        Text(
-                          'Today - ${DateTime.now().day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][DateTime.now().month - 1]}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.lightText,
-                          ),
-                        ),
-                      ],
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: todayItems.length,
+                      itemBuilder: (context, index) {
+                        final item = todayItems[index];
+                        return _medicationCard(item);
+                      },
                     ),
                   ),
 
-                  // Medications List or Empty State
-                  if (todayItems.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.xl,
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.favorite_border_rounded,
-                              size: 64,
-                              color: AppColors.primaryGreen.withOpacity(0.5),
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            const Text(
-                              'No medications for today',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: AppColors.lightText,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            ElevatedButton.icon(
-                              onPressed: () => Navigator.of(
-                                context,
-                              ).pushNamed('/edit', arguments: null),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add Your First Medication'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: todayItems.length,
-                        itemBuilder: (context, index) {
-                          final item = todayItems[index];
-                          return _medicationCard(item);
-                        },
-                      ),
-                    ),
-
-                  const SizedBox(height: AppSpacing.lg),
-                ],
-              ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
             ),
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () =>
             Navigator.of(context).pushNamed('/edit', arguments: null),

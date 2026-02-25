@@ -102,12 +102,12 @@ class _EditScreenState extends State<EditScreen> {
       };
 
       if (widget.medication == null) {
-        await _firebaseService.addDocument('medications', medicationData);
+        await _firebaseService.addUserDocument('medications', medicationData);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Medication added successfully')),
         );
       } else {
-        await _firebaseService.updateDocument(
+        await _firebaseService.updateUserDocument(
           'medications',
           widget.medication!.id,
           medicationData,
@@ -144,7 +144,7 @@ class _EditScreenState extends State<EditScreen> {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await _firebaseService.deleteDocument(
+                await _firebaseService.deleteUserDocument(
                   'medications',
                   widget.medication!.id,
                 );
