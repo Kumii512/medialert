@@ -11,8 +11,18 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool enableNotifications = true;
-  bool darkMode = false;
-  String selectedLanguage = 'English';
+  bool dailyMotivationQuote = true;
+  String reminderInterval = '10 minutes before';
+  final TextEditingController notificationMessageController =
+      TextEditingController(
+        text: 'Time to take your medication. Please take it now.',
+      );
+
+  @override
+  void dispose() {
+    notificationMessageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,17 +75,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Custom Reminder Message',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.darkText,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextField(
+                          controller: notificationMessageController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            hintText:
+                                'Write your own notification message here',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            // Appearance Section
+            // Wellness Section
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Appearance',
+                    'Wellness',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -96,26 +144,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                     child: SwitchListTile(
-                      title: const Text('Dark Mode'),
-                      subtitle: const Text('Enable dark theme'),
-                      value: darkMode,
+                      title: const Text('Daily Motivation Quote'),
+                      subtitle: const Text(
+                        'Show a short wellness quote each day',
+                      ),
+                      value: dailyMotivationQuote,
                       activeColor: AppColors.primaryGreen,
                       onChanged: (value) {
-                        setState(() => darkMode = value);
+                        setState(() => dailyMotivationQuote = value);
                       },
                     ),
                   ),
                 ],
               ),
             ),
-            // Language Section
+            // Reminder Section
             Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Language',
+                    'Reminder Timing',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -140,19 +190,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       vertical: AppSpacing.sm,
                     ),
                     child: DropdownButton<String>(
-                      value: selectedLanguage,
+                      value: reminderInterval,
                       isExpanded: true,
                       underline: const SizedBox(),
-                      items: ['English', 'Spanish', 'French', 'German']
-                          .map(
-                            (lang) => DropdownMenuItem(
-                              value: lang,
-                              child: Text(lang),
-                            ),
-                          )
-                          .toList(),
+                      items:
+                          [
+                                'At exact time',
+                                '5 minutes before',
+                                '10 minutes before',
+                                '15 minutes before',
+                                '30 minutes before',
+                              ]
+                              .map(
+                                (interval) => DropdownMenuItem(
+                                  value: interval,
+                                  child: Text(interval),
+                                ),
+                              )
+                              .toList(),
                       onChanged: (value) {
-                        setState(() => selectedLanguage = value ?? 'English');
+                        setState(
+                          () => reminderInterval = value ?? '10 minutes before',
+                        );
                       },
                     ),
                   ),

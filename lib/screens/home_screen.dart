@@ -158,26 +158,29 @@ class _HomeScreenState extends State<HomeScreen> {
         continue;
       }
 
-      final pendingDate = lastTakenDay == null
+      final nextDueDate = lastTakenDay == null
           ? createdDay
           : lastTakenDay.add(const Duration(days: 1));
 
-      if (pendingDate.isAfter(today)) {
+      if (nextDueDate.isAfter(today)) {
         continue;
       }
+
+      final isMissed = nextDueDate.isBefore(today);
+      final scheduledDate = nextDueDate;
 
       items.add(
         _MedicationDisplayItem(
           medication: med,
-          scheduledDate: pendingDate,
-          isMissed: pendingDate.isBefore(today),
+          scheduledDate: scheduledDate,
+          isMissed: isMissed,
         ),
       );
     }
 
     items.sort((a, b) {
       if (a.isMissed != b.isMissed) {
-        return a.isMissed ? -1 : 1;
+        return a.isMissed ? 1 : -1;
       }
       return a.scheduledDate.compareTo(b.scheduledDate);
     });
