@@ -38,12 +38,13 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyD3hQuZRkJCM0nKB7cDoYoPIU_B7GtPnDg',
+    apiKey: 'AIzaSyBqIg3euK8xXmuqQcDmaNpL5CD-P0s-RbE',
     appId: '1:280439406383:web:8cd34d727ca7fdb8822bda',
     messagingSenderId: '280439406383',
     projectId: 'medialert-16f7d',
     authDomain: 'medialert-16f7d.firebaseapp.com',
     storageBucket: 'medialert-16f7d.firebasestorage.app',
+    measurementId: 'G-3429C1TVSB',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -55,29 +56,33 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyD3hQuZRkJCM0nKB7cDoYoPIU_B7GtPnDg',
+    apiKey: 'AIzaSyAn_0EaoH3qAfFKSx0PGH1wWRVpAOHZIBU',
     appId: '1:280439406383:ios:0a46667563a104a0822bda',
     messagingSenderId: '280439406383',
     projectId: 'medialert-16f7d',
     storageBucket: 'medialert-16f7d.firebasestorage.app',
+    iosClientId: '280439406383-7n6l17tbekt2n1kilo4aj1had8vv2org.apps.googleusercontent.com',
     iosBundleId: 'com.example.medialertProject',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyD3hQuZRkJCM0nKB7cDoYoPIU_B7GtPnDg',
+    apiKey: 'AIzaSyAn_0EaoH3qAfFKSx0PGH1wWRVpAOHZIBU',
     appId: '1:280439406383:ios:0a46667563a104a0822bda',
     messagingSenderId: '280439406383',
     projectId: 'medialert-16f7d',
     storageBucket: 'medialert-16f7d.firebasestorage.app',
+    iosClientId: '280439406383-7n6l17tbekt2n1kilo4aj1had8vv2org.apps.googleusercontent.com',
     iosBundleId: 'com.example.medialertProject',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyD3hQuZRkJCM0nKB7cDoYoPIU_B7GtPnDg',
+    apiKey: 'AIzaSyBqIg3euK8xXmuqQcDmaNpL5CD-P0s-RbE',
     appId: '1:280439406383:web:686fb3a8babbac70822bda',
     messagingSenderId: '280439406383',
     projectId: 'medialert-16f7d',
+    authDomain: 'medialert-16f7d.firebaseapp.com',
     storageBucket: 'medialert-16f7d.firebasestorage.app',
+    measurementId: 'G-NG47QDK46K',
   );
 
   static const FirebaseOptions linux = FirebaseOptions(
