@@ -26,19 +26,30 @@ class FirebaseService {
   }
 
   // Authentication methods
-  Future<UserCredential?> signUp(String email, String password) async {
+  Future<UserCredential> signUp(
+    String email,
+    String password, {
+    String? name,
+  }) async {
     try {
-      return await auth.createUserWithEmailAndPassword(
+      final userCredential = await auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      final trimmedName = name?.trim();
+      if (trimmedName != null && trimmedName.isNotEmpty) {
+        await userCredential.user?.updateDisplayName(trimmedName);
+      }
+
+      return userCredential;
     } catch (e) {
       print('Sign up error: $e');
-      return null;
+      rethrow;
     }
   }
 
-  Future<UserCredential?> signIn(String email, String password) async {
+  Future<UserCredential> signIn(String email, String password) async {
     try {
       return await auth.signInWithEmailAndPassword(
         email: email,
@@ -46,7 +57,7 @@ class FirebaseService {
       );
     } catch (e) {
       print('Sign in error: $e');
-      return null;
+      rethrow;
     }
   }
 
@@ -72,17 +83,19 @@ class FirebaseService {
   }
 
   // User-scoped Firestore methods
-  Future<void> addUserDocument(
+  Future<String> addUserDocument(
     String collection,
     Map<String, dynamic> data,
   ) async {
     try {
       final userId = _requireUserId();
-      await firestore
+      final docRef = await firestore
           .collection('users')
           .doc(userId)
           .collection(collection)
           .add(data);
+
+      return docRef.id;
     } catch (e) {
       print('Add user document error: $e');
       rethrow;

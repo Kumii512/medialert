@@ -7,6 +7,18 @@
 					"appId": "1:280439406383:android:8aec3c071e5c8a6d822bda",
 					"fileOutput": "android/app/google-services.json"
 				}
+			},
+			"dart": {
+				"lib/firebase_options.dart": {
+					"projectId": "medialert-16f7d",
+					"configurations": {
+						"android": "1:280439406383:android:8aec3c071e5c8a6d822bda",
+						"ios": "1:280439406383:ios:0a46667563a104a0822bda",
+						"macos": "1:280439406383:ios:0a46667563a104a0822bda",
+						"web": "1:280439406383:web:8cd34d727ca7fdb8822bda",
+						"windows": "1:280439406383:web:686fb3a8babbac70822bda"
+					}
+				}
 			}
 		}
 	},
@@ -17,6 +29,53 @@
 			"**/.*",
 			"**/node_modules/**"
 		],
+		"headers": [
+			{
+				"source": "/index.html",
+				"headers": [
+					{
+						"key": "Cache-Control",
+						"value": "no-cache, no-store, must-revalidate"
+					}
+				]
+			},
+			{
+				"source": "/flutter_service_worker.js",
+				"headers": [
+					{
+						"key": "Cache-Control",
+						"value": "no-cache, no-store, must-revalidate"
+					}
+				]
+			},
+			{
+				"source": "/flutter_bootstrap.js",
+				"headers": [
+					{
+						"key": "Cache-Control",
+						"value": "no-cache, no-store, must-revalidate"
+					}
+				]
+			},
+			{
+				"source": "/version.json",
+				"headers": [
+					{
+						"key": "Cache-Control",
+						"value": "no-cache, no-store, must-revalidate"
+					}
+				]
+			},
+			{
+				"source": "/main.dart.js",
+				"headers": [
+					{
+						"key": "Cache-Control",
+						"value": "no-cache, no-store, must-revalidate"
+					}
+				]
+			}
+		],
 		"rewrites": [
 			{
 				"source": "**",
@@ -26,5 +85,8 @@
 	},
 	"firestore": {
 		"rules": "firestore.rules"
+	},
+	"functions": {
+		"source": "functions"
 	}
 }

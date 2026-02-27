@@ -1,7 +1,11 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/medication.dart';
 import '../services/firebase_service.dart';
+import '../services/notification_service.dart';
 import '../constants/app_theme.dart';
 
 class _MedicationDisplayItem {
@@ -25,8 +29,56 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final FirebaseService _firebaseService = FirebaseService();
+  final NotificationService _notificationService = NotificationService();
+  Timer? _webNotificationTimer;
+  Timer? _nextWebDueTimer;
   List<Medication> medications = [];
   bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      _webNotificationTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+        _notificationService.notifyDueMedicationsOnWeb(medications);
+      });
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureNotificationPermission();
+      _scheduleNextWebDueCheck();
+    });
+  }
+
+  @override
+  void dispose() {
+    _webNotificationTimer?.cancel();
+    _nextWebDueTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _scheduleNextWebDueCheck() async {
+    if (!kIsWeb) {
+      return;
+    }
+
+    _nextWebDueTimer?.cancel();
+    final delay = await _notificationService.nextWebReminderDelay(medications);
+    if (delay == null || !mounted) {
+      return;
+    }
+
+    final timerDelay = delay < const Duration(seconds: 1)
+        ? const Duration(seconds: 1)
+        : delay;
+
+    _nextWebDueTimer = Timer(timerDelay, () async {
+      await _notificationService.notifyDueMedicationsOnWeb(medications);
+      if (!mounted) {
+        return;
+      }
+      await _scheduleNextWebDueCheck();
+    });
+  }
 
   Future<void> _markMedicationAsTaken(
     Medication med, {
@@ -107,6 +159,44 @@ class _HomeScreenState extends State<HomeScreen> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  Future<void> _ensureNotificationPermission() async {
+    final hasPermission = await _notificationService
+        .hasNotificationPermission();
+    if (hasPermission || !mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          'Enable notifications to receive medication alerts.',
+        ),
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(
+          label: 'Enable',
+          onPressed: () async {
+            await _notificationService.requestPermissions();
+            final granted = await _notificationService
+                .hasNotificationPermission();
+            if (!mounted) {
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  granted
+                      ? 'Notifications enabled.'
+                      : 'Notification permission still blocked. Please allow it in browser/app settings.',
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
@@ -171,6 +261,28 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Good Evening';
   }
 
+  Stream<List<Medication>> _medicationStream() async* {
+    await for (final snapshot in _firebaseService.streamUserDocuments(
+      'medications',
+    )) {
+      final items = <Medication>[];
+      for (final doc in snapshot.docs) {
+        try {
+          items.add(
+            Medication.fromJson(
+              doc.data() as Map<String, dynamic>,
+              docId: doc.id,
+            ),
+          );
+        } catch (e) {
+          debugPrint('Skipping invalid medication ${doc.id}: $e');
+        }
+      }
+
+      yield items;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,11 +292,75 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: AppColors.primaryGreen,
         elevation: 0,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firebaseService.streamUserDocuments('medications'),
+      body: StreamBuilder<List<Medication>>(
+        stream: _medicationStream(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            final error = snapshot.error;
+            final errorText = error.toString().toLowerCase();
+            final isPermissionDenied =
+                (error is FirebaseException &&
+                    error.code == 'permission-denied') ||
+                errorText.contains('permission-denied') ||
+                errorText.contains('insufficient permissions');
+
+            if (isPermissionDenied) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.lock_outline_rounded,
+                        size: 48,
+                        color: AppColors.lightText,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      const Text(
+                        'Please sign in again to load your medications.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppColors.darkText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text(
+                        'Your data is protected and only available to your account.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.lightText),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(
+                            context,
+                          ).pushNamedAndRemoveUntil('/auth', (route) => false);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Go to Sign In'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Text(
+                  'Could not load medications right now. Please try again.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.darkText),
+                ),
+              ),
+            );
           }
 
           if (!snapshot.hasData) {
@@ -193,23 +369,11 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
 
-          try {
-            final items = <Medication>[];
-            for (final doc in snapshot.data!.docs) {
-              try {
-                items.add(
-                  Medication.fromJson(
-                    doc.data() as Map<String, dynamic>,
-                    docId: doc.id,
-                  ),
-                );
-              } catch (e) {
-                debugPrint('Skipping invalid medication ${doc.id}: $e');
-              }
-            }
-            medications = items;
-          } catch (e) {
-            debugPrint('Error loading medications: $e');
+          medications = snapshot.data!;
+
+          if (kIsWeb) {
+            _notificationService.notifyDueMedicationsOnWeb(medications);
+            _scheduleNextWebDueCheck();
           }
 
           final todayItems = _getTodayMedicationItems();

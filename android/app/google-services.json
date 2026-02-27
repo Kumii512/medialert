@@ -12,7 +12,12 @@
           "package_name": "com.example.medialert_project"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "280439406383-ra9sjtdhlgl7kjik98gafa9bgj1tl8rp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD3hQuZRkJCM0nKB7cDoYoPIU_B7GtPnDg"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "280439406383-ra9sjtdhlgl7kjik98gafa9bgj1tl8rp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "280439406383-7n6l17tbekt2n1kilo4aj1had8vv2org.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.medialertProject"
+              }
+            }
+          ]
         }
       }
     }

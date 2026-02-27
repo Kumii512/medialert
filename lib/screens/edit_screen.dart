@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/medication.dart';
 import '../services/firebase_service.dart';
+import '../services/notification_service.dart';
 import '../constants/app_theme.dart';
 
 class EditScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _EditScreenState extends State<EditScreen> {
   late String selectedType;
   late TimeOfDay selectedTime;
   final FirebaseService _firebaseService = FirebaseService();
+  final NotificationService _notificationService = NotificationService();
   bool isSaving = false;
   final List<String> medicationTypes = [
     'Tablet',
@@ -83,6 +85,7 @@ class _EditScreenState extends State<EditScreen> {
         'frequency': widget.medication?.frequency ?? 'Daily',
         'description': descriptionController.text,
         'time': timeString,
+        'notificationsEnabled': widget.medication?.notificationsEnabled ?? true,
         'createdAt':
             widget.medication?.createdAt.toIso8601String() ??
             DateTime.now().toIso8601String(),
@@ -90,17 +93,38 @@ class _EditScreenState extends State<EditScreen> {
       };
 
       if (widget.medication == null) {
-        // Add new medication
-        await _firebaseService.addUserDocument('medications', medicationData);
+        final medicationId = await _firebaseService.addUserDocument(
+          'medications',
+          medicationData,
+        );
+        final newMedication = Medication.fromJson(
+          medicationData,
+          docId: medicationId,
+        );
+        await _notificationService.scheduleMedicationReminder(newMedication);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Medication added successfully')),
         );
       } else {
-        // Update existing medication
         await _firebaseService.updateUserDocument(
           'medications',
           widget.medication!.id,
           medicationData,
+        );
+
+        final updatedMedication = widget.medication!.copyWith(
+          name: nameController.text,
+          dosage: dosageController.text,
+          medicationType: selectedType,
+          frequency: widget.medication?.frequency ?? 'Daily',
+          description: descriptionController.text,
+          time: timeString,
+          notificationsEnabled: widget.medication?.notificationsEnabled ?? true,
+          isActive: true,
+        );
+
+        await _notificationService.scheduleMedicationReminder(
+          updatedMedication,
         );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Medication updated successfully')),
@@ -142,6 +166,9 @@ class _EditScreenState extends State<EditScreen> {
             onPressed: () async {
               Navigator.pop(context);
               try {
+                await _notificationService.cancelMedicationReminder(
+                  widget.medication!.id,
+                );
                 await _firebaseService.deleteUserDocument(
                   'medications',
                   widget.medication!.id,
