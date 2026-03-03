@@ -10,3 +10,5 @@ Future<bool> showBrowserNotification({
 String? getBrowserStorageItem(String key) => null;
 
 void setBrowserStorageItem(String key, String value) {}
+
+void removeBrowserStorageByPrefix(String prefix) {}

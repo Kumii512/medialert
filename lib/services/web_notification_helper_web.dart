@@ -37,3 +37,12 @@ String? getBrowserStorageItem(String key) {
 void setBrowserStorageItem(String key, String value) {
   html.window.localStorage[key] = value;
 }
+
+void removeBrowserStorageByPrefix(String prefix) {
+  final keys = html.window.localStorage.keys.toList(growable: false);
+  for (final key in keys) {
+    if (key.startsWith(prefix)) {
+      html.window.localStorage.remove(key);
+    }
+  }
+}

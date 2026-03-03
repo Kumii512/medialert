@@ -639,6 +639,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           TextButton(
                             onPressed: () async {
+                              await _notificationService
+                                  .clearReminderStateOnLogout();
                               await _pushNotificationService
                                   .removeTokenForCurrentUser();
                               await FirebaseAuth.instance.signOut();

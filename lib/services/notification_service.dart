@@ -249,6 +249,16 @@ class NotificationService {
     await _plugin.cancel(_notificationIdForMedication(medicationId));
   }
 
+  Future<void> clearReminderStateOnLogout() async {
+    if (kIsWeb) {
+      removeBrowserStorageByPrefix('web_notified_');
+      return;
+    }
+
+    await initialize();
+    await _plugin.cancelAll();
+  }
+
   Future<void> rescheduleMedicationReminders(
     Iterable<Medication> medications, {
     String? reminderIntervalOverride,
