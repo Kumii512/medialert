@@ -32,6 +32,11 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+functions/node_modules/
+web/main.dart.js
+web/flutter_service_worker.js
+web/flutter_bootstrap.js
+web/version.json
 
 # Symbolication related
 app.*.symbols

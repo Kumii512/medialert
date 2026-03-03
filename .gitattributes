@@ -1,0 +1,11 @@
+# Keep GitHub language stats focused on source files
+build/** linguist-generated=true
+functions/node_modules/** linguist-generated=true
+**/*.map linguist-generated=true
+
+# Flutter platform scaffolding (not primary app logic)
+android/** linguist-generated=true
+ios/** linguist-generated=true
+macos/** linguist-generated=true
+linux/** linguist-generated=true
+windows/** linguist-generated=true
