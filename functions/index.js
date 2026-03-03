@@ -124,7 +124,7 @@ exports.sendMedicationReminders = onSchedule(
           }
 
           const title = "Medication Reminder";
-          const response = await sendMulticast(tokens, {
+          const response = await sendMulticast(userId, tokens, {
             notification: {
               title,
               body: reminderBody,
@@ -365,7 +365,7 @@ async function tryCreateDispatchLock(dispatchKey) {
   }
 }
 
-async function sendMulticast(tokens, payload) {
+async function sendMulticast(userId, tokens, payload) {
   const chunkSize = 500;
   let successCount = 0;
   let failureCount = 0;
@@ -377,11 +377,63 @@ async function sendMulticast(tokens, payload) {
       ...payload,
     });
 
+    const invalidTokens = collectInvalidTokens(chunk, response.responses);
+    if (invalidTokens.length > 0) {
+      await deleteNotificationTokens(userId, invalidTokens);
+    }
+
     successCount += response.successCount;
     failureCount += response.failureCount;
   }
 
   return {successCount, failureCount};
+}
+
+function collectInvalidTokens(tokens, responses) {
+  const invalidCodes = new Set([
+    "messaging/invalid-registration-token",
+    "messaging/registration-token-not-registered",
+  ]);
+
+  const invalidTokens = [];
+
+  for (let index = 0; index < responses.length; index += 1) {
+    const result = responses[index];
+    if (result.success) {
+      continue;
+    }
+
+    const code = result.error?.code;
+    if (!invalidCodes.has(code)) {
+      continue;
+    }
+
+    const token = tokens[index];
+    if (token) {
+      invalidTokens.push(token);
+    }
+  }
+
+  return invalidTokens;
+}
+
+async function deleteNotificationTokens(userId, tokens) {
+  if (!userId || !tokens.length) {
+    return;
+  }
+
+  const batch = db.batch();
+
+  for (const token of tokens) {
+    const tokenRef = db
+      .collection("users")
+      .doc(userId)
+      .collection("notificationTokens")
+      .doc(token);
+    batch.delete(tokenRef);
+  }
+
+  await batch.commit();
 }
 
 function clamp(value, min, max) {

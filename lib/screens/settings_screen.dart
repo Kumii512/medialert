@@ -5,6 +5,7 @@ import '../models/medication.dart';
 import '../constants/app_theme.dart';
 import '../services/firebase_service.dart';
 import '../services/notification_service.dart';
+import '../services/push_notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -27,6 +28,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   final FirebaseService _firebaseService = FirebaseService();
   final NotificationService _notificationService = NotificationService();
+  final PushNotificationService _pushNotificationService =
+      PushNotificationService();
   bool enableNotifications = true;
   bool dailyMotivationQuote = true;
   String reminderInterval = _defaultReminderInterval;
@@ -273,36 +276,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.darkText,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: const Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.info_outline_rounded,
-                          color: AppColors.darkGreen,
-                          size: 20,
-                        ),
-                        SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            'Free mode is active. Reminders are client-side only. On web, reminders work while this app tab is open.',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.lightText,
-                              height: 1.35,
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -666,6 +639,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           TextButton(
                             onPressed: () async {
+                              await _pushNotificationService
+                                  .removeTokenForCurrentUser();
                               await FirebaseAuth.instance.signOut();
                               Navigator.of(context).pushNamedAndRemoveUntil(
                                 '/welcome',
