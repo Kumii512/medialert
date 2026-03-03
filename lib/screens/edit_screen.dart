@@ -204,115 +204,222 @@ class _EditScreenState extends State<EditScreen> {
     }
   }
 
+  IconData _iconForMedicationType(String type) {
+    switch (type) {
+      case 'Capsule':
+        return Icons.medication_rounded;
+      case 'Syrup':
+        return Icons.local_drink_rounded;
+      case 'Injection':
+        return Icons.vaccines_rounded;
+      case 'Tablet':
+      default:
+        return Icons.medication_liquid_rounded;
+    }
+  }
+
+  Widget _buildFunInputCard({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
+      backgroundColor: AppColors.veryLightGreen,
       appBar: AppBar(
         title: Text(
           widget.medication == null ? 'Add Medication' : 'Edit Medication',
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         backgroundColor: AppColors.primaryGreen,
       ),
       body: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 20 + bottomInset),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: 'Medication Name *',
-                hintText: 'e.g., Aspirin',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.lightGreen, AppColors.veryLightGreen],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                prefixIcon: const Icon(Icons.medication),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: AppColors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: AppColors.darkGreen,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      widget.medication == null
+                          ? 'Let\'s add your medication 💊'
+                          : 'Update your medication details ✨',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.darkText,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: dosageController,
-              decoration: InputDecoration(
-                labelText: 'Dosage *',
-                hintText: 'e.g., 500mg',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+            _buildFunInputCard(
+              child: TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Medication Name *',
+                  hintText: 'e.g., Aspirin',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefixIcon: const Icon(Icons.favorite_rounded),
                 ),
-                prefixIcon: const Icon(Icons.straighten),
               ),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: selectedType,
-              decoration: InputDecoration(
-                labelText: 'Medication Type *',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+            _buildFunInputCard(
+              child: TextField(
+                controller: dosageController,
+                decoration: InputDecoration(
+                  labelText: 'Dosage *',
+                  hintText: 'e.g., 500mg',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefixIcon: const Icon(Icons.science_rounded),
                 ),
-                prefixIcon: const Icon(Icons.category),
               ),
-              items: medicationTypes
-                  .map(
-                    (type) => DropdownMenuItem(value: type, child: Text(type)),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => selectedType = value);
-                }
-              },
+            ),
+            const SizedBox(height: 16),
+            _buildFunInputCard(
+              child: DropdownButtonFormField<String>(
+                initialValue: selectedType,
+                decoration: InputDecoration(
+                  labelText: 'Medication Type *',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefixIcon: Icon(_iconForMedicationType(selectedType)),
+                ),
+                items: medicationTypes
+                    .map(
+                      (type) => DropdownMenuItem(
+                        value: type,
+                        child: Row(
+                          children: [
+                            Icon(
+                              _iconForMedicationType(type),
+                              size: 18,
+                              color: AppColors.darkGreen,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(type),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => selectedType = value);
+                  }
+                },
+              ),
             ),
             const SizedBox(height: 16),
             GestureDetector(
               onTap: _selectTime,
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 16,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.access_time),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Time to take *',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          selectedTime.format(context),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+              child: _buildFunInputCard(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.borderColor),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 16,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.alarm_rounded,
+                        color: AppColors.darkGreen,
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Time to take *',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.lightText,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(height: 4),
+                          Text(
+                            selectedTime.format(context),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.darkText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: descriptionController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                labelText: 'Notes/Description',
-                hintText: 'Additional notes about this medication',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+            _buildFunInputCard(
+              child: TextField(
+                controller: descriptionController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Notes/Description',
+                  hintText: 'Additional notes about this medication',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefixIcon: const Icon(Icons.sticky_note_2_rounded),
                 ),
-                prefixIcon: const Icon(Icons.notes),
               ),
             ),
             const SizedBox(height: 32),
@@ -324,7 +431,7 @@ class _EditScreenState extends State<EditScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: isSaving
@@ -333,7 +440,7 @@ class _EditScreenState extends State<EditScreen> {
                         'Save Medication',
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
               ),

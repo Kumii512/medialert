@@ -22,6 +22,7 @@ class NotificationService {
     '15 minutes before',
     '30 minutes before',
   };
+  static const Duration _webReminderTriggerWindow = Duration(minutes: 1);
 
   static final NotificationService _instance = NotificationService._internal();
 
@@ -310,6 +311,10 @@ class NotificationService {
         continue;
       }
 
+      if (now.difference(scheduledForToday) > _webReminderTriggerWindow) {
+        continue;
+      }
+
       final storageKey = _webStorageKey(
         medicationId: medication.id,
         now: now,
@@ -372,12 +377,17 @@ class NotificationService {
         continue;
       }
 
-      if (!now.isBefore(scheduledForToday)) {
+      if (!now.isBefore(scheduledForToday) &&
+          now.difference(scheduledForToday) <= _webReminderTriggerWindow) {
         return Duration.zero;
       }
 
-      if (nextScheduled == null || scheduledForToday.isBefore(nextScheduled)) {
-        nextScheduled = scheduledForToday;
+      final nextCandidate = now.isBefore(scheduledForToday)
+          ? scheduledForToday
+          : scheduledForToday.add(const Duration(days: 1));
+
+      if (nextScheduled == null || nextCandidate.isBefore(nextScheduled)) {
+        nextScheduled = nextCandidate;
       }
     }
 

@@ -252,425 +252,543 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  Widget _buildSectionHeader({required String title, required IconData icon}) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.lightGreen, AppColors.veryLightGreen],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.darkGreen),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.darkText,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSoftCard({required Widget child, EdgeInsetsGeometry? padding}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: AppColors.lightGreen.withValues(alpha: 0.55),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: padding,
+      child: child,
+    );
+  }
+
+  Widget _buildAnimatedNotificationCard({
+    required Widget child,
+    required int index,
+    EdgeInsetsGeometry? padding,
+  }) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.96, end: 1),
+      duration: Duration(milliseconds: 220 + (index * 90)),
+      curve: Curves.easeOut,
+      builder: (context, value, cardChild) {
+        return Transform.translate(
+          offset: Offset(0, (1 - value) * 24),
+          child: Opacity(opacity: value.clamp(0, 1), child: cardChild),
+        );
+      },
+      child: _buildSoftCard(child: child, padding: padding),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.veryLightGreen,
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: const Row(
+          children: [
+            Icon(Icons.settings_suggest_rounded, size: 20),
+            SizedBox(width: AppSpacing.xs),
+            Text('Settings'),
+          ],
+        ),
         backgroundColor: AppColors.primaryGreen,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Notifications Section
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Notifications',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkText,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isSendingTestNotification ? null : _sendTestNotification,
+        backgroundColor: AppColors.primaryGreen,
+        foregroundColor: Colors.white,
+        icon: _isSendingTestNotification
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.notifications_active_rounded),
+        label: Text(_isSendingTestNotification ? 'Sending...' : 'Test Alert'),
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.veryLightGreen, AppColors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  0,
+                ),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.lightGreen, AppColors.veryLightGreen],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: SwitchListTile(
-                      title: const Text('Enable Notifications'),
-                      subtitle: const Text(
-                        'Get reminders for your medications',
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
                       ),
-                      value: enableNotifications,
-                      activeColor: AppColors.primaryGreen,
-                      onChanged: (value) {
-                        setState(() => enableNotifications = value);
-                      },
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                  child: const Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.white,
+                        child: Icon(
+                          Icons.tune_rounded,
+                          color: AppColors.darkGreen,
                         ),
-                      ],
+                      ),
+                      SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Make MediAlert feel like you ✨',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.darkText,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(
+                      title: 'Notifications',
+                      icon: Icons.notifications_rounded,
                     ),
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: const [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: AppColors.lightGreen,
-                              child: Icon(
-                                Icons.edit_notifications_rounded,
-                                size: 18,
+                    const SizedBox(height: AppSpacing.md),
+                    _buildAnimatedNotificationCard(
+                      index: 0,
+                      child: SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.xs,
+                        ),
+                        secondary: const CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.lightGreen,
+                          child: Icon(
+                            Icons.notifications_on_rounded,
+                            size: 17,
+                            color: AppColors.darkGreen,
+                          ),
+                        ),
+                        title: const Text('Enable Notifications'),
+                        subtitle: const Text(
+                          'Get reminders for your medications',
+                        ),
+                        value: enableNotifications,
+                        activeColor: AppColors.primaryGreen,
+                        onChanged: (value) {
+                          setState(() => enableNotifications = value);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildAnimatedNotificationCard(
+                      index: 1,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: AppColors.lightGreen,
+                                child: Icon(
+                                  Icons.edit_notifications_rounded,
+                                  size: 18,
+                                  color: AppColors.darkGreen,
+                                ),
+                              ),
+                              SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  'Custom Reminder Message',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.darkText,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          const Text(
+                            'Set one default message for your medication alert.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.lightText,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          TextField(
+                            controller: notificationMessageController,
+                            maxLines: 1,
+                            decoration: InputDecoration(
+                              hintText: 'Ex: Time for your medicine 💊',
+                              hintStyle: const TextStyle(
+                                color: AppColors.lightText,
+                                fontSize: 14,
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.edit_note_rounded,
                                 color: AppColors.darkGreen,
                               ),
-                            ),
-                            SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              child: Text(
-                                'Custom Reminder Message',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.darkText,
+                              filled: true,
+                              fillColor: AppColors.white,
+                              contentPadding: const EdgeInsets.all(
+                                AppSpacing.md,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                                borderSide: const BorderSide(
+                                  color: AppColors.borderColor,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                                borderSide: const BorderSide(
+                                  color: AppColors.borderColor,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                                borderSide: const BorderSide(
+                                  color: AppColors.primaryGreen,
+                                  width: 1.5,
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        const Text(
-                          'This message appears in your medication alert.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.lightText,
                           ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        TextField(
-                          controller: notificationMessageController,
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            hintText: 'Ex: Time for your medicine 💊',
-                            hintStyle: const TextStyle(
-                              color: AppColors.lightText,
-                              fontSize: 14,
-                            ),
-                            filled: true,
-                            fillColor: AppColors.veryLightGreen,
-                            contentPadding: const EdgeInsets.all(AppSpacing.md),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              borderSide: const BorderSide(
-                                color: AppColors.borderColor,
+                          const SizedBox(height: AppSpacing.sm),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: ElevatedButton.icon(
+                              onPressed: _isSavingCustomMessage
+                                  ? null
+                                  : _saveCustomReminderMessage,
+                              icon: _isSavingCustomMessage
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(Icons.save_rounded, size: 18),
+                              label: Text(
+                                _isSavingCustomMessage ? 'Saving...' : 'Save',
                               ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              borderSide: const BorderSide(
-                                color: AppColors.borderColor,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              borderSide: const BorderSide(
-                                color: AppColors.primaryGreen,
-                                width: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: ElevatedButton.icon(
-                            onPressed: _isSavingCustomMessage
-                                ? null
-                                : _saveCustomReminderMessage,
-                            icon: _isSavingCustomMessage
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.save_rounded, size: 18),
-                            label: Text(
-                              _isSavingCustomMessage ? 'Saving...' : 'Save',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: OutlinedButton.icon(
-                            onPressed: _isSendingTestNotification
-                                ? null
-                                : _sendTestNotification,
-                            icon: _isSendingTestNotification
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.notifications_active_rounded,
-                                    size: 18,
-                                  ),
-                            label: Text(
-                              _isSendingTestNotification
-                                  ? 'Sending...'
-                                  : 'Test Notification Now',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Wellness Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Wellness',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkText,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: SwitchListTile(
-                      title: const Text('Daily Motivation Quote'),
-                      subtitle: const Text(
-                        'Show a short wellness quote each day',
-                      ),
-                      value: dailyMotivationQuote,
-                      activeColor: AppColors.primaryGreen,
-                      onChanged: (value) {
-                        setState(() => dailyMotivationQuote = value);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Reminder Section
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Reminder Timing',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkText,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
-                    ),
-                    child: DropdownButton<String>(
-                      value: reminderInterval,
-                      isExpanded: true,
-                      underline: const SizedBox(),
-                      items: _reminderIntervals
-                          .map(
-                            (interval) => DropdownMenuItem(
-                              value: interval,
-                              child: Text(interval),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(
-                          () => reminderInterval =
-                              value ?? _defaultReminderInterval,
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ElevatedButton.icon(
-                      onPressed: _isSavingReminderTiming
-                          ? null
-                          : _saveReminderTiming,
-                      icon: _isSavingReminderTiming
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.save_rounded, size: 18),
-                      label: Text(
-                        _isSavingReminderTiming ? 'Saving...' : 'Save',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // About Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'About',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkText,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ListTile(
-                      title: const Text('Version'),
-                      subtitle: const Text('1.0.0'),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ListTile(
-                      title: const Text('Privacy Policy'),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Privacy Policy will open here'),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            // Logout Button
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Logout?'),
-                        content: const Text('Are you sure you want to logout?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              await _notificationService
-                                  .clearReminderStateOnLogout();
-                              await _pushNotificationService
-                                  .removeTokenForCurrentUser();
-                              await FirebaseAuth.instance.signOut();
-                              Navigator.of(context).pushNamedAndRemoveUntil(
-                                '/welcome',
-                                (route) => false,
-                              );
-                            },
-                            child: const Text(
-                              'Logout',
-                              style: TextStyle(color: AppColors.errorRed),
                             ),
                           ),
                         ],
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.logout_rounded),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.errorRed,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                  ),
-                  label: const Text('Logout', style: TextStyle(fontSize: 16)),
+                  ],
                 ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(
+                      title: 'Wellness',
+                      icon: Icons.self_improvement_rounded,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildSoftCard(
+                      child: SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.xs,
+                        ),
+                        secondary: const CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.lightGreen,
+                          child: Icon(
+                            Icons.spa_rounded,
+                            size: 17,
+                            color: AppColors.darkGreen,
+                          ),
+                        ),
+                        title: const Text('Daily Motivation Quote'),
+                        subtitle: const Text(
+                          'Show a short wellness quote each day',
+                        ),
+                        value: dailyMotivationQuote,
+                        activeColor: AppColors.primaryGreen,
+                        onChanged: (value) {
+                          setState(() => dailyMotivationQuote = value);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(
+                      title: 'Reminder Timing',
+                      icon: Icons.schedule_rounded,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildSoftCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: AppColors.lightGreen,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                            child: const Icon(
+                              Icons.timer_rounded,
+                              size: 17,
+                              color: AppColors.darkGreen,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: DropdownButton<String>(
+                              value: reminderInterval,
+                              isExpanded: true,
+                              underline: const SizedBox(),
+                              items: _reminderIntervals
+                                  .map(
+                                    (interval) => DropdownMenuItem(
+                                      value: interval,
+                                      child: Text(interval),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                setState(
+                                  () => reminderInterval =
+                                      value ?? _defaultReminderInterval,
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton.icon(
+                        onPressed: _isSavingReminderTiming
+                            ? null
+                            : _saveReminderTiming,
+                        icon: _isSavingReminderTiming
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.save_rounded, size: 18),
+                        label: Text(
+                          _isSavingReminderTiming ? 'Saving...' : 'Save',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(
+                      title: 'About',
+                      icon: Icons.info_outline_rounded,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildSoftCard(
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          radius: 15,
+                          backgroundColor: AppColors.lightGreen,
+                          child: Icon(
+                            Icons.info_rounded,
+                            size: 16,
+                            color: AppColors.darkGreen,
+                          ),
+                        ),
+                        title: const Text('Version'),
+                        subtitle: const Text('1.0.0'),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _buildSoftCard(
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          radius: 15,
+                          backgroundColor: AppColors.lightGreen,
+                          child: Icon(
+                            Icons.privacy_tip_rounded,
+                            size: 16,
+                            color: AppColors.darkGreen,
+                          ),
+                        ),
+                        title: const Text('Privacy Policy'),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Privacy Policy will open here'),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Logout?'),
+                          content: const Text(
+                            'Are you sure you want to logout?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                await _notificationService
+                                    .clearReminderStateOnLogout();
+                                await _pushNotificationService
+                                    .removeTokenForCurrentUser();
+                                await FirebaseAuth.instance.signOut();
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  '/welcome',
+                                  (route) => false,
+                                );
+                              },
+                              child: const Text(
+                                'Logout',
+                                style: TextStyle(color: AppColors.errorRed),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.logout_rounded),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.errorRed,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                    ),
+                    label: const Text('Logout', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(

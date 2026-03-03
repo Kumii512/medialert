@@ -2,7 +2,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: 'AIzaSyD3hQuZRkJCM0nKB7cDoYoPIU_B7GtPnDg',
+  apiKey: 'AIzaSyBqIg3euK8xXmuqQcDmaNpL5CD-P0s-RbE',
   appId: '1:280439406383:web:8cd34d727ca7fdb8822bda',
   messagingSenderId: '280439406383',
   projectId: 'medialert-16f7d',

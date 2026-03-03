@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/medication.dart';
 import '../services/firebase_service.dart';
 import '../services/notification_service.dart';
@@ -30,54 +31,20 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final FirebaseService _firebaseService = FirebaseService();
   final NotificationService _notificationService = NotificationService();
-  Timer? _webNotificationTimer;
-  Timer? _nextWebDueTimer;
   List<Medication> medications = [];
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
-      _webNotificationTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-        _notificationService.notifyDueMedicationsOnWeb(medications);
-      });
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureNotificationPermission();
-      _scheduleNextWebDueCheck();
     });
   }
 
   @override
   void dispose() {
-    _webNotificationTimer?.cancel();
-    _nextWebDueTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _scheduleNextWebDueCheck() async {
-    if (!kIsWeb) {
-      return;
-    }
-
-    _nextWebDueTimer?.cancel();
-    final delay = await _notificationService.nextWebReminderDelay(medications);
-    if (delay == null || !mounted) {
-      return;
-    }
-
-    final timerDelay = delay < const Duration(seconds: 1)
-        ? const Duration(seconds: 1)
-        : delay;
-
-    _nextWebDueTimer = Timer(timerDelay, () async {
-      await _notificationService.notifyDueMedicationsOnWeb(medications);
-      if (!mounted) {
-        return;
-      }
-      await _scheduleNextWebDueCheck();
-    });
   }
 
   Future<void> _markMedicationAsTaken(
@@ -201,6 +168,31 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
+  String _formatMedicationTime(String timeValue) {
+    final value = timeValue.trim();
+
+    final amPmMatch = RegExp(
+      r'^(\d{1,2}):(\d{1,2})\s*([AaPp][Mm])$',
+    ).firstMatch(value);
+    if (amPmMatch != null) {
+      final hour = int.tryParse(amPmMatch.group(1) ?? '') ?? 0;
+      final minute = int.tryParse(amPmMatch.group(2) ?? '') ?? 0;
+      final period = (amPmMatch.group(3) ?? 'AM').toUpperCase();
+      return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
+    }
+
+    final twentyFourMatch = RegExp(r'^(\d{1,2}):(\d{1,2})$').firstMatch(value);
+    if (twentyFourMatch != null) {
+      final hour24 = int.tryParse(twentyFourMatch.group(1) ?? '') ?? 0;
+      final minute = int.tryParse(twentyFourMatch.group(2) ?? '') ?? 0;
+      final period = hour24 >= 12 ? 'PM' : 'AM';
+      final hour12 = (hour24 % 12 == 0) ? 12 : hour24 % 12;
+      return '${hour12.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
+    }
+
+    return timeValue;
+  }
+
   List<_MedicationDisplayItem> _getTodayMedicationItems() {
     final today = _startOfDay(DateTime.now());
     final items = <_MedicationDisplayItem>[];
@@ -261,6 +253,25 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Good Evening';
   }
 
+  String _getAccountName() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return 'Friend';
+    }
+
+    final displayName = user.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) {
+      return displayName;
+    }
+
+    final email = user.email?.trim();
+    if (email != null && email.isNotEmpty) {
+      return email.split('@').first;
+    }
+
+    return 'Friend';
+  }
+
   Stream<List<Medication>> _medicationStream() async* {
     await for (final snapshot in _firebaseService.streamUserDocuments(
       'medications',
@@ -288,7 +299,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.veryLightGreen,
       appBar: AppBar(
-        title: const Text('Today\'s Medication'),
+        title: Text(
+          'Today\'s Medication',
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: AppColors.primaryGreen,
         elevation: 0,
       ),
@@ -371,11 +389,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
           medications = snapshot.data!;
 
-          if (kIsWeb) {
-            _notificationService.notifyDueMedicationsOnWeb(medications);
-            _scheduleNextWebDueCheck();
-          }
-
           final todayItems = _getTodayMedicationItems();
 
           return SingleChildScrollView(
@@ -388,19 +401,90 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _getGreeting(),
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkText,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.darkText,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text:
+                                        '${_getGreeting()}, ${_getAccountName()} ',
+                                  ),
+                                  const WidgetSpan(
+                                    alignment: PlaceholderAlignment.middle,
+                                    child: Icon(
+                                      Icons.sentiment_satisfied_alt_rounded,
+                                      size: 22,
+                                      color: AppColors.darkGreen,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Today - ${DateTime.now().day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][DateTime.now().month - 1]}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.lightText,
+                      const SizedBox(height: AppSpacing.xs),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.event_note_rounded,
+                            size: 16,
+                            color: AppColors.lightText,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            'Today - ${DateTime.now().day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][DateTime.now().month - 1]}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.lightText,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(AppRadius.xl),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.auto_awesome_rounded,
+                              size: 18,
+                              color: AppColors.darkGreen,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(
+                              'Stay on track today ✨',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.darkText,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -413,32 +497,72 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         vertical: AppSpacing.xl,
+                        horizontal: AppSpacing.lg,
                       ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.favorite_border_rounded,
-                            size: 64,
-                            color: AppColors.primaryGreen.withOpacity(0.5),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          const Text(
-                            'No medications for today',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: AppColors.lightText,
-                              fontWeight: FontWeight.w500,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(AppRadius.xl),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          ElevatedButton.icon(
-                            onPressed: () => Navigator.of(
-                              context,
-                            ).pushNamed('/edit', arguments: null),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add Your First Medication'),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: AppColors.lightGreen,
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.lg,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.medication_liquid_rounded,
+                                size: 40,
+                                color: AppColors.darkGreen,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            Text(
+                              'No medications for today',
+                              style: const TextStyle(
+                                fontSize: 19,
+                                color: AppColors.darkText,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'Add one now to start your daily reminders 💊',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.lightText,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            ElevatedButton.icon(
+                              onPressed: () => Navigator.of(
+                                context,
+                              ).pushNamed('/edit', arguments: null),
+                              icon: const Icon(
+                                Icons.add_circle_outline_rounded,
+                              ),
+                              label: const Text(
+                                'Add Medication',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   )
@@ -467,6 +591,7 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () =>
             Navigator.of(context).pushNamed('/edit', arguments: null),
+        tooltip: 'Add Medication',
         child: const Icon(Icons.add, size: 28),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -506,9 +631,9 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -540,7 +665,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         med.name,
                         style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.darkText,
                         ),
                       ),
@@ -549,6 +674,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.lightText,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -585,10 +711,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      med.time,
+                      _formatMedicationTime(med.time),
                       style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.darkGreen,
                       ),
                     ),
@@ -609,7 +735,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       med.medicationType,
                       style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.darkText,
                       ),
                     ),
@@ -626,7 +752,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   vertical: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.errorRed.withOpacity(0.1),
+                  color: AppColors.errorRed.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Row(
@@ -641,7 +767,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       'Missed • Scheduled on ${_formatDate(item.scheduledDate)}',
                       style: const TextStyle(
                         color: AppColors.errorRed,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -662,7 +788,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   foregroundColor: Colors.white,
                 ),
                 icon: const Icon(Icons.check_circle_rounded),
-                label: const Text('Mark as Taken'),
+                label: const Text(
+                  'Mark as Taken',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
             ),
           ],

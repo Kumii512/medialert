@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,18 +17,35 @@ import 'services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter framework error: ${details.exceptionAsString()}');
+  };
+
+  runApp(const MyApp());
+  unawaited(_safeInitializeServices());
+}
+
+Future<void> _safeInitializeServices() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
   } catch (e) {
-    print('Firebase initialization error: $e');
+    debugPrint('Firebase initialization error: $e');
   }
 
-  await NotificationService().initialize();
-  await PushNotificationService().initialize();
+  try {
+    await NotificationService().initialize();
+  } catch (e) {
+    debugPrint('Local notification initialization error: $e');
+  }
 
-  runApp(const MyApp());
+  try {
+    await PushNotificationService().initialize();
+  } catch (e) {
+    debugPrint('Push notification initialization error: $e');
+  }
 }
 
 class MyApp extends StatefulWidget {

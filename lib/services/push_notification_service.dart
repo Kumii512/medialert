@@ -100,17 +100,25 @@ class PushNotificationService {
   Future<String?> _currentFcmToken() async {
     if (kIsWeb) {
       const vapidKey = String.fromEnvironment('FCM_WEB_VAPID_KEY');
-      if (vapidKey.isNotEmpty) {
-        return FirebaseMessaging.instance.getToken(vapidKey: vapidKey);
+      if (vapidKey.isEmpty) {
+        debugPrint(
+          'FCM web token skipped: provide --dart-define=FCM_WEB_VAPID_KEY=YOUR_PUBLIC_VAPID_KEY.',
+        );
+        return null;
       }
 
-      debugPrint(
-        'FCM web VAPID key was not provided via --dart-define. Falling back to default Firebase web push key.',
-      );
-      return FirebaseMessaging.instance.getToken();
+      return FirebaseMessaging.instance.getToken(vapidKey: vapidKey);
     }
 
     return FirebaseMessaging.instance.getToken();
+  }
+
+  Future<void> dispose() async {
+    await _authSubscription?.cancel();
+    await _tokenRefreshSubscription?.cancel();
+    _authSubscription = null;
+    _tokenRefreshSubscription = null;
+    _isInitialized = false;
   }
 
   Future<void> removeTokenForCurrentUser() async {

@@ -1,21 +1,52 @@
-# medialert_project
+# MediAlert
 
-A new Flutter project.
+MediAlert is a Flutter app for managing daily medicines with reminder notifications and a medication history log.
 
-## Getting Started
+## Live Demo
 
-This project is a starting point for a Flutter application.
+- Web app: https://medialert-16f7d.web.app
+- GitHub: https://github.com/Kumii512/medialert
 
-A few resources to get you started if this is your first Flutter project:
+## Main Features
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Add and manage medicine schedules
+- Get reminder notifications for medicine times
+- Mark medicines as taken with optional notes
+- Track medication history by date
+- Save and sync data using Firebase backend services
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Tech Stack
 
-## Notifications
+- Flutter (Dart)
+- Firebase Auth
+- Cloud Firestore
+- Firebase Storage
+- Firebase Cloud Messaging
+- Firebase Hosting
+- Cloud Functions (for scheduled notification flows)
 
-See [NOTIFICATION_SETUP.md](NOTIFICATION_SETUP.md) for Firebase Cloud Messaging setup, deployment, and testing steps.
+## Run Locally
+
+1. Install Flutter SDK
+2. In the project folder, run:
+
+```bash
+flutter pub get
+flutter run
+```
+
+## Build for Web
+
+```bash
+flutter build web --no-wasm-dry-run
+```
+
+## Deploy to Firebase Hosting
+
+```bash
+firebase deploy --only hosting
+```
+
+## Notification Setup
+
+See [NOTIFICATION_SETUP.md](NOTIFICATION_SETUP.md) for Firebase Cloud Messaging setup, Cloud Functions deployment, and testing steps.
