@@ -5,7 +5,6 @@ MediAlert is a Flutter app for managing daily medicines with reminder notificati
 ## Live Demo
 
 - Web app: https://medialert-16f7d.web.app
-- GitHub: https://github.com/Kumii512/medialert
 
 ## Main Features
 

@@ -15,34 +15,110 @@ import 'constants/app_theme.dart';
 import 'services/notification_service.dart';
 import 'services/push_notification_service.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    debugPrint('Flutter framework error: ${details.exceptionAsString()}');
-  };
+  runApp(const AppBootstrapper());
+}
 
-  runApp(const MyApp());
-  unawaited(_safeInitializeServices());
+class AppBootstrapper extends StatefulWidget {
+  const AppBootstrapper({super.key});
+
+  @override
+  State<AppBootstrapper> createState() => _AppBootstrapperState();
+}
+
+class _AppBootstrapperState extends State<AppBootstrapper> {
+  bool _initialized = false;
+  String? _error;
+  bool _forceContinue = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+    // Fallback: If initialization takes too long, force continue after 8 seconds
+    Future.delayed(const Duration(seconds: 8), () {
+      if (!_initialized && mounted) {
+        setState(() {
+          _forceContinue = true;
+        });
+      }
+    });
+  }
+
+  Future<void> _initialize() async {
+    try {
+      await _safeInitializeServices();
+      setState(() {
+        _initialized = true;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Initialization failed:\n\n$_error',
+                  style: const TextStyle(color: Colors.red),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _forceContinue = true;
+                    });
+                  },
+                  child: const Text('Continue Anyway'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    if (!_initialized && !_forceContinue) {
+      return const MaterialApp(
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+    }
+    return const MyApp();
+  }
 }
 
 Future<void> _safeInitializeServices() async {
+  debugPrint('Starting Firebase initialization');
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    debugPrint('Firebase initialized');
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
   }
 
+  debugPrint('Starting NotificationService initialization');
   try {
     await NotificationService().initialize();
+    debugPrint('NotificationService initialized');
   } catch (e) {
     debugPrint('Local notification initialization error: $e');
   }
 
+  debugPrint('Starting PushNotificationService initialization');
   try {
     await PushNotificationService().initialize();
+    debugPrint('PushNotificationService initialized');
   } catch (e) {
     debugPrint('Push notification initialization error: $e');
   }
@@ -67,10 +143,12 @@ class _MyAppState extends State<MyApp> {
           darkTheme: AppThemes.darkTheme(),
           themeMode: themeMode,
           debugShowCheckedModeBanner: false,
-          home: const WelcomeScreen(),
+          initialRoute: '/landing',
           routes: {
+            '/landing': (context) => const WelcomeScreen(),
             '/auth': (context) => const AuthScreen(),
             '/welcome': (context) => const WelcomeScreen(),
+            '/app': (context) => const AuthGate(),
             '/home': (context) => const AuthGate(),
             '/history': (context) => const HistoryScreen(),
             '/settings': (context) => const SettingsScreen(),

@@ -12,6 +12,7 @@ import '../models/medication.dart';
 import 'firebase_service.dart';
 
 class NotificationService {
+  bool _isRequestingPermission = false;
   NotificationService._internal();
 
   static const String _defaultReminderInterval = 'At exact time';
@@ -106,36 +107,42 @@ class NotificationService {
   }
 
   Future<void> requestPermissions() async {
-    if (kIsWeb) {
-      await requestBrowserNotificationPermission();
-      return;
+    if (_isRequestingPermission) return;
+    _isRequestingPermission = true;
+    try {
+      if (kIsWeb) {
+        await requestBrowserNotificationPermission();
+        return;
+      }
+
+      final androidImplementation = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await androidImplementation?.requestNotificationsPermission();
+
+      final iosImplementation = _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      await iosImplementation?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      final macOsImplementation = _plugin
+          .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin
+          >();
+      await macOsImplementation?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } finally {
+      _isRequestingPermission = false;
     }
-
-    final androidImplementation = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    await androidImplementation?.requestNotificationsPermission();
-
-    final iosImplementation = _plugin
-        .resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin
-        >();
-    await iosImplementation?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    final macOsImplementation = _plugin
-        .resolvePlatformSpecificImplementation<
-          MacOSFlutterLocalNotificationsPlugin
-        >();
-    await macOsImplementation?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
   }
 
   Future<bool> hasNotificationPermission() async {
@@ -215,6 +222,11 @@ class NotificationService {
     final scheduledDate = _nextReminderDateTimeForMedication(
       medication.time,
       reminderInterval,
+    );
+
+    // Debug print to trace scheduling
+    debugPrint(
+      'Scheduling notification for medicationId: \\${medication.id} at \\${scheduledDate.toString()} (now: \\${tz.TZDateTime.now(tz.local)})',
     );
 
     const notificationDetails = NotificationDetails(

@@ -65,9 +65,15 @@ class _EditScreenState extends State<EditScreen> {
   }
 
   void _saveMedication() async {
-    if (nameController.text.isEmpty || dosageController.text.isEmpty) {
+    if (nameController.text.trim().isEmpty ||
+        dosageController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all required fields')),
+        const SnackBar(
+          content: Text(
+            'Please fill all required fields',
+            key: Key('required_fields_error'),
+          ),
+        ),
       );
       return;
     }
@@ -427,6 +433,7 @@ class _EditScreenState extends State<EditScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
+                key: const Key('save_medication_button'),
                 onPressed: isSaving ? null : _saveMedication,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryGreen,

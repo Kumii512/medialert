@@ -164,6 +164,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Removed 'Back to landing' button
+                      const SizedBox(height: AppSpacing.sm),
                       if (_isLogin) ...[
                         Align(
                           alignment: Alignment.center,
